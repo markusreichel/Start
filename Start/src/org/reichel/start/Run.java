@@ -9,6 +9,11 @@ public class Run {
 			throw new IllegalArgumentException("Parametro inválido.");
 		} 
 		
+		//TODO: se existsUpdateFolder() && existsUpdateClass()
+			//TODO: call execute update
+		//TODO: existsUpdateClass()
+		    //TODO: call check for updates
+		
 		try {
 			Class.forName(args[0]).getMethod("main", String[].class).invoke(null, (Object)null);
 		} catch (IllegalAccessException e) {
