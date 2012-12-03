@@ -62,7 +62,7 @@ public class UpdateJar {
 
 	private boolean moveUpdateFileToApplicationTargetFolder(File updateFile, File applicationFile) {
 		boolean result = false;
-		if(updateFile.getAbsolutePath().endsWith(".delete")){
+		if(updateFile.getAbsolutePath().endsWith(UpdateHelper.DELETE_EXTENSION)){
 			result = true;
 		} else {
 			if(updateFile.renameTo(applicationFile)){

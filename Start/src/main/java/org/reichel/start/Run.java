@@ -25,10 +25,7 @@ public class Run {
 		FileHelper fileHelper = new FileHelper(log);
 		
 		updateCurrentJar(args, updateHelper, fileHelper, log); 
-		Update update = new Update(updateHelper, fileHelper, log);
-		if(update.hasUpdate()){
-			update.update();
-		} 
+		updateApplication(updateHelper, log, fileHelper); 
 		
 		
 		//TODO: check for updates;
@@ -67,6 +64,14 @@ public class Run {
 //		} catch (ClassNotFoundException e) {
 //			e.printStackTrace();
 //		}
+	}
+
+	private static void updateApplication(UpdateHelper updateHelper, Log log,
+			FileHelper fileHelper) {
+		Update update = new Update(updateHelper, fileHelper, log);
+		if(update.hasUpdate()){
+			update.update();
+		}
 	}
 
 	private static void updateCurrentJar(String[] args, UpdateHelper updateHelper, FileHelper fileHelper, Log log) throws IOException {
