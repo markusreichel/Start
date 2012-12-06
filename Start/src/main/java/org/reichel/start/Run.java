@@ -42,7 +42,7 @@ public class Run {
 						restart(new String[]{"applyUpdates",args[1]}, "\"" + updateHelper.getCurrentJarFile().getAbsolutePath() + "\"", log, System.getProperty("log4j.configuration"));
 					} else {
 						//nada a fazer reinicie com o classpath completo
-						restart(new String[]{"application",args[1]}, "\"" + updateHelper.getCurrentJarFile().getAbsolutePath() + "\";" + updateHelper.getCurrentJarFile().getParentFile().getAbsolutePath() + File.separatorChar + "lib" + File.separatorChar + "*", log, System.getProperty("log4j.configuration"));
+						restart(new String[]{"application",args[1]}, "\"" + updateHelper.getCurrentJarFile().getAbsolutePath() + ";" + updateHelper.getCurrentJarFile().getParentFile().getAbsolutePath() + File.separatorChar + "lib" + File.separatorChar + "*\"", log, System.getProperty("log4j.configuration"));
 					}
 				}
 			} catch (IllegalAccessException e) {
@@ -61,7 +61,7 @@ public class Run {
 		} else if("application".equals(args[0])){
 			//nothing else to do, start application
 			try {
-				Class.forName(args[0]).getMethod("main", String[].class).invoke(null, (Object)null);
+				Class.forName(args[1]).getMethod("main", String[].class).invoke(null, (Object)null);
 			} catch (IllegalAccessException e) {
 				e.printStackTrace();
 			} catch (IllegalArgumentException e) {
