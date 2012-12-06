@@ -24,7 +24,7 @@ public class Log {
 	
 	private final FileWriter fw;
 	
-	private final SimpleDateFormat sf = new SimpleDateFormat("dd/MM/YYYY HH:mm:ss");
+	private final SimpleDateFormat sf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 	
 	public Log(UpdateHelper updateHelper) throws IOException {
 		this.updateHelper = updateHelper;

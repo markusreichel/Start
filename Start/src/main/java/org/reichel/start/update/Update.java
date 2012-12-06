@@ -41,7 +41,7 @@ public class Update {
 		log.log(Run.class, "-----------------------------");
 	}
 	
-	public boolean hasUpdate(){
+	public boolean hasUpdateToInstall(){
 		return this.updateHelper.getUpdateDirectory().exists();
 	}
 }
