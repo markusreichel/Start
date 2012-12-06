@@ -34,6 +34,7 @@ public class Run {
 		} else if("checkUpdates".equals(args[0])){
 			try {
 				Object isUpdated = Class.forName("org.reichel.update.gui.UpdateManager").getMethod("doUpdate", String.class).invoke(null, (Object)updateHelper.getCurrentDirectory().getAbsolutePath());
+				log.log(Run.class, "Resposta da classe org.reichel.update.gui.UpdateManager.doUpdate('" +updateHelper.getCurrentDirectory().getAbsolutePath() + "') : " + isUpdated.toString());
 				if(isUpdated instanceof Boolean){
 					//this means that it has updates to apply, so restart application...
 					if(((Boolean) isUpdated) == false){
@@ -134,13 +135,14 @@ public class Run {
 	private static String[]  getRestartCommand(String[] args, String cp, String log4jConfiguration) {
 		List<String> command = new ArrayList<String>();
 		command.add("\"" + System.getProperty("java.home") + File.separatorChar + "bin" + File.separatorChar + "java.exe\"");
+		command.add("-Dlog4j.configuration=" + log4jConfiguration);
 		command.add("-cp");
 		command.add(cp);
 		command.add(Run.class.getName());
 		for(String arg : args){
 			command.add(arg);
 		}
-		command.add("-Dlog4j.configuration=" + log4jConfiguration);
+		
 		return command.toArray(new String[command.size()]);
 	}
 	
