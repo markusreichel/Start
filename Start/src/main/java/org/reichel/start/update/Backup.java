@@ -39,10 +39,20 @@ public class Backup {
 			File backupFile = null;
 			for(File applicationFile : applicationFilesToBackup){
 				 backupFile = getBackupFile(applicationFile, backup);
-				 if(backupFile.getAbsoluteFile().getParentFile() != null && backupFile.getAbsoluteFile().getParentFile().exists()){
+				 log.log(getClass(), "Fazendo o backup de: " + backupFile.getAbsolutePath());
+				 
+				 if(backupFile.getAbsoluteFile() != null && backupFile.getAbsoluteFile().getParentFile() != null){
+					 if(!backupFile.getAbsoluteFile().getParentFile().exists()){
+						 if(!backupFile.getAbsoluteFile().getParentFile().mkdirs()){
+							 log.log(getClass(),"Impossível criar diretório para: " + backupFile.getAbsoluteFile().getParent());
+						 }
+					 }
 					 doBackupProperties(backupFile, applicationFile);
+				 } else { 
+					 log.log(getClass(), "Caminho não encontrado:" + backupFile.getParent());
 				 }
 			}
+			log.log(this.getClass(), "-----------------------------");
 		}
 	}
 
@@ -58,7 +68,7 @@ public class Backup {
 		}
 	}
 
-	private void doBackupProperties(File backupFile, File applicationFile) {
+	private boolean doBackupProperties(File backupFile, File applicationFile) {
 		if(!backupFile.getAbsoluteFile().getParentFile().exists()){
 			if(backupFile.getAbsoluteFile().getParentFile().mkdirs()){
 				 log.log(this.getClass(), "Diretório criado com sucesso: " + backupFile.getAbsoluteFile().getParentFile());
@@ -70,12 +80,14 @@ public class Backup {
 		if(backupFile.getAbsoluteFile().getParentFile().exists()){
 			 if(this.fileHelper.copyFile(applicationFile, backupFile)) {
 				 log.log(this.getClass(), "Arquivo '" + applicationFile.getAbsolutePath() + "' copiado com sucesso para '" + backupFile.getAbsolutePath() + "'.");
+				 return true;
 			 } else {
 				 log.log(this.getClass(), "Impossível copiar arquivo '" + applicationFile.getAbsolutePath() + "' para '" + backupFile.getAbsolutePath() + "'.");
 			 }
 		} else {
 			 log.log(this.getClass(), "Diretório de backup inexistente: " + backupFile.getAbsoluteFile().getParentFile().getAbsolutePath());
 		}
+		return false;
 	}
 	
 	private File getBackupFile(File applicationFile, File backup) {

@@ -41,7 +41,7 @@ public class Log {
 		if(!targetLog.exists()){
 			targetLog.mkdirs();
 		}
-		File log = new File(targetLog.getAbsolutePath() + File.separatorChar + "update.log");
+		File log = new File(targetLog.getAbsolutePath() + File.separatorChar + "start.log");
 		if(!log.exists()){
 			log.createNewFile();
 		}
@@ -60,6 +60,15 @@ public class Log {
 	
 	private String getDate(){
 		return this.sf.format(new Date());
+	}
+	
+	public void startingLog(Class<?> clazz){
+		log(clazz, "------ Inicializando aplicação em " + getDate() + " ------");
+	}
+	
+	public void endingLog(Class<?> clazz){
+		log(clazz, "------ Finalizando aplicação em " + getDate() + " ------");
+		end();
 	}
 	
 	public void end(){

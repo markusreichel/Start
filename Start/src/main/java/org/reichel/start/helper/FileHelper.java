@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import org.reichel.start.filefilter.JarFileFilter;
@@ -47,33 +48,57 @@ public class FileHelper {
 		deleteAll(targetPath, true);
 	}
 	
+	public void deleteAll(File targetPath, String... exceptions){
+		deleteAll(targetPath, false, exceptions);
+	}
+
 	public void deleteAll(File targetPath){
-		deleteAll(targetPath, false);
+		deleteAll(targetPath, false, (String[]) null);
 	}
 	
-	private void deleteAll(File targetPath, boolean onlyEmpty){
-		if(targetPath.isDirectory()){
-			File[] files = targetPath.listFiles();
-			for(File file : files){
-				if(file.isDirectory()){
-					deleteAll(file, onlyEmpty);
-				}
-				if(onlyEmpty == false && file.exists()){
-					if(file.delete()){
-						log.log(this.getClass(),"Arquivo excluído com sucesso: " + targetPath.getAbsolutePath());
-					} else {
-						log.log(this.getClass(), "Impossível excluir arquivo: " + targetPath.getAbsolutePath());
+	public void deleteAll(File targetPath, boolean onlyEmpty, String... exceptions){
+		if(targetPath != null){
+			log.log(getClass(), "Excluindo diretório: " + targetPath.getAbsolutePath());
+			if(targetPath.exists() && targetPath.isDirectory()){
+				File[] files = targetPath.listFiles();
+				for(File file : files){
+					if(file.isDirectory()){
+						deleteAll(file, onlyEmpty);
+					}
+					if(onlyEmpty == false && file.exists()){
+						if(exceptions == null || !isException(file, exceptions)){
+							if(file.delete()){
+								log.log(this.getClass(),"Arquivo excluído com sucesso: " + targetPath.getAbsolutePath());
+							} else {
+								log.log(this.getClass(), "Impossível excluir arquivo: " + targetPath.getAbsolutePath());
+							}
+						} else {
+							log.log(this.getClass(), "Não excluir pois esta na lista de excessoes: " + Arrays.toString(exceptions));
+						}
 					}
 				}
+				if(targetPath.listFiles().length == 0 && targetPath.exists()){
+					if(targetPath.delete()){
+						log.log(this.getClass(),"Diretório excluído com sucesso: " + targetPath.getAbsolutePath());
+					} else {
+						log.log(this.getClass(),"Impossível excluir diretório: " + targetPath.getAbsolutePath());
+					}
+				}
+			} else {
+				log.log(getClass(), "Não é diretório ou diretório não existe.");
 			}
-			if(targetPath.listFiles().length == 0 && targetPath.exists()){
-				if(targetPath.delete()){
-					log.log(this.getClass(),"Diretório excluído com sucesso: " + targetPath.getAbsolutePath());
-				} else {
-					log.log(this.getClass(),"Impossível excluir diretório: " + targetPath.getAbsolutePath());
+		}
+	}
+
+	private boolean isException(File file, String[] exceptions) {
+		if(exceptions != null){
+			for(String exception : exceptions){
+				if(file.getAbsolutePath().endsWith(exception)){
+					return true;
 				}
 			}
 		}
+		return false;
 	}
 
 	public String getRelativePath(File from, File file) {
@@ -84,11 +109,12 @@ public class FileHelper {
 		log.log(this.getClass(), "Copiando arquivo: '" + jarFile.getAbsolutePath() + "' para: '" + parentJarFile.getAbsolutePath() + "'");
 		boolean result = false;
 		try {
-			byte[] buffer = new byte[1024];
+			byte[] buffer = new byte[1024*4];
 			FileOutputStream fos = new FileOutputStream(parentJarFile);
 			FileInputStream fis = new FileInputStream(jarFile);
-			while(fis.read(buffer) != -1){
-				fos.write(buffer);
+			int bytesRead = 0;
+			while((bytesRead = fis.read(buffer)) != -1){
+				fos.write(buffer, 0, bytesRead);
 			}
 			fos.flush();
 			fos.close();

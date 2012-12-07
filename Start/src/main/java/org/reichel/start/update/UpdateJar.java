@@ -2,8 +2,10 @@ package org.reichel.start.update;
 
 import java.io.File;
 import java.io.FileFilter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.jar.JarFile;
 
 import org.reichel.start.filefilter.JarFileFilter;
 import org.reichel.start.helper.FileHelper;
@@ -41,23 +43,57 @@ public class UpdateJar {
 		boolean result;
 		for(File updateFile : updateFiles){
 			if(updateFile.exists() && updateFile.isFile()){
-				log.log(this.getClass(), "Arquivo de atualização: " + updateFile.getAbsolutePath());
-				File applicationFile = getApplicationFile(updateFile);
-				result = deleteApplicationFile(updateFile, applicationFile);
-				if(result){
-					result = createApplicationTargetFolder(applicationFile);
-				}
-				if(result){
-					result = moveUpdateFileToApplicationTargetFolder(updateFile,	applicationFile);
-				}
-				if(result){
-					log.log(this.getClass(), "Atualização aplicada com sucesso.");
+				if(isExploded(updateFile)){
+					log.log(this.getClass(), "Não faça nada. É jar do tipo jar:exploded. " + updateFile.getAbsolutePath());
 				} else {
-					log.log(this.getClass(), "Não foi possível aplicar a atualização.");
+					log.log(this.getClass(), "Arquivo de atualização: " + updateFile.getAbsolutePath());
+					File applicationFile = getApplicationFile(updateFile);
+					result = deleteApplicationFile(updateFile, applicationFile);
+					if(result){
+						result = createApplicationTargetFolder(applicationFile);
+					}
+					if(result){
+						result = moveUpdateFileToApplicationTargetFolder(updateFile, applicationFile);
+					}
+					if(result){
+						log.log(this.getClass(), "Atualização aplicada com sucesso.");
+					} else {
+						log.log(this.getClass(), "Não foi possível aplicar a atualização.");
+					}
+					log.log(this.getClass(), "-----------------------------");
 				}
-				log.log(this.getClass(), "-----------------------------");
 			}
 		}
+	}
+
+	private boolean isExploded(File updateFile) {
+		JarFile jarfile = null;
+		try {
+			try {
+				jarfile = new JarFile(updateFile);
+			} catch (IOException e) {
+				log.log(this.getClass(), "Problemas ao acessar jarFile: " + updateFile.getAbsolutePath());
+			}
+			if(jarfile != null){
+				try {
+					String jarType = (String) jarfile.getManifest().getMainAttributes().getValue("JarType");
+					if("jar:exploded".equals(jarType)){
+						return true;
+					}
+				} catch (IOException e) {
+					log.log(this.getClass(), "Problemas ao buscar MainAttribute JarType: " + updateFile.getAbsolutePath());
+				}
+			}
+		} finally {
+			if(jarfile != null){
+				try {
+					jarfile.close();
+				} catch (IOException e) {
+					log.log(this.getClass(), "Problemas ao liberar recurso de: " + updateFile.getAbsolutePath());
+				}
+			}
+		}
+		return false;
 	}
 
 	private boolean moveUpdateFileToApplicationTargetFolder(File updateFile, File applicationFile) {

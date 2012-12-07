@@ -15,147 +15,242 @@ import org.reichel.start.update.UpdateCurrentJar;
 
 public class Run {
 
-	public static void main(String[] args) throws IOException {
-		if(args == null || args.length < 2){
-			throw new IllegalArgumentException("Parametro inválido.");
-		} 
-//		String[] args2 = new String[]{"file:///D:/Documents/Markus/git/URei/URei/target/release","D:\\Documents\\Markus\\git\\UpdateGui\\UpdateGui\\target\\ambiente\\update"};
-
-		UpdateHelper updateHelper = new UpdateHelper();
-		Log log = new Log(updateHelper);
-		FileHelper fileHelper = new FileHelper(log);
-		if("applyUpdates".equals(args[0])){
-			
-			updateCurrentJar(args, updateHelper, fileHelper, log); 
-			updateApplication(updateHelper, log, fileHelper);
-			//inicie utilizando update.jar
-			System.out.println(System.getProperty("log4j.configuration"));
-			restart(new String[]{"checkUpdates",args[1]}, "\"" + updateHelper.getCurrentJarFile().getAbsolutePath() + ";" + updateHelper.getCurrentJarFile().getParentFile().getAbsolutePath() + File.separatorChar + "lib" + File.separatorChar + "*\"", log, System.getProperty("log4j.configuration"));
-		} else if("checkUpdates".equals(args[0])){
-			try {
-				Object isUpdated = Class.forName("org.reichel.update.gui.UpdateManager").getMethod("doUpdate", String.class).invoke(null, (Object)updateHelper.getCurrentDirectory().getAbsolutePath());
-				log.log(Run.class, "Resposta da classe org.reichel.update.gui.UpdateManager.doUpdate('" +updateHelper.getCurrentDirectory().getAbsolutePath() + "') : " + isUpdated.toString());
-				if(isUpdated instanceof Boolean){
-					//this means that it has updates to apply, so restart application...
-					if(((Boolean) isUpdated) == false){
-						//não esta atualizado, reinicie utilizando apenas start.jar
-						restart(new String[]{"applyUpdates",args[1]}, "\"" + updateHelper.getCurrentJarFile().getAbsolutePath() + "\"", log, System.getProperty("log4j.configuration"));
-					} else {
-						//nada a fazer reinicie com o classpath completo
-						restart(new String[]{"application",args[1]}, "\"" + updateHelper.getCurrentJarFile().getAbsolutePath() + ";" + updateHelper.getCurrentJarFile().getParentFile().getAbsolutePath() + File.separatorChar + "lib" + File.separatorChar + "*\"", log, System.getProperty("log4j.configuration"));
-					}
-				}
-			} catch (IllegalAccessException e) {
-				e.printStackTrace();
-			} catch (IllegalArgumentException e) {
-				e.printStackTrace();
-			} catch (InvocationTargetException e) {
-				e.printStackTrace();
-			} catch (NoSuchMethodException e) {
-				e.printStackTrace();
-			} catch (SecurityException e) {
-				e.printStackTrace();
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			}
-		} else if("application".equals(args[0])){
-			//nothing else to do, start application
-			try {
-				Class.forName(args[1]).getMethod("main", String[].class).invoke(null, (Object)null);
-			} catch (IllegalAccessException e) {
-				e.printStackTrace();
-			} catch (IllegalArgumentException e) {
-				e.printStackTrace();
-			} catch (InvocationTargetException e) {
-				e.printStackTrace();
-			} catch (NoSuchMethodException e) {
-				e.printStackTrace();
-			} catch (SecurityException e) {
-				e.printStackTrace();
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			}
-		} else {
-			StringBuilder sb = new StringBuilder("Usage:");
-			sb.append(System.getProperty("line.separator"))
-			  .append(" java -cp start.jar org.reichel.start.Run applyUpdates org.reichel.ambiente.gui.Manager")
-			  .append(System.getProperty("line.separator"))
-			  .append(" java -cp start.jar;lib/update.jar org.reichel.start.Run checkUpdates org.reichel.ambiente.gui.Manager");
-			throw new IllegalArgumentException(sb.toString());
+	private final UpdateHelper updateHelper;
+	
+	private final Log log;
+	
+	private final FileHelper fileHelper;
+	
+	private final List<String> parameters;
+	
+	private final String log4jConfiguration;
+	
+	private final String updateManager = "org.reichel.update.gui.UpdateManager";
+	
+	public Run(String[] parameters) throws IOException{
+		if(parameters == null){
+			throw new IllegalArgumentException("Parametros nulo.");
+		}
+		this.updateHelper = new UpdateHelper();
+		this.log = new Log(updateHelper);
+		log.startingLog(this.getClass());
+		this.parameters = new ArrayList<String>();
+		this.fileHelper = new FileHelper(log);
+		String log4jConfiguration = System.getProperty("log4j.configuration"); 
+		if(log4jConfiguration == null){
+			log4jConfiguration = new File(this.updateHelper.getCurrentDirectory().getAbsolutePath() + File.separatorChar + "config" + File.separatorChar + "log4j.properties").toURI().toString();
+			System.setProperty("log4j.configuration", log4jConfiguration);
+		}
+		this.log4jConfiguration = log4jConfiguration;
+		for(String parameter : parameters){
+			log("Parametro recebido: " + parameter);
+			this.parameters.add(parameter);
+		}
+	}
+	
+	public void applyUpdatesAndRestart(){
+		log("Executando applyUpdatesAndRestart()");
+		removeParameter("applyUpdates");
+		updateCurrentJar();
+		updateApplication();
+		try {
+			this.parameters.add("checkUpdates");
+			restart(updateHelper.getCurrentJarFile().getAbsolutePath() + ";" + getLibPath());
+		} catch (IOException e) {
+			log("Problemas ao iniciar execução de processo. " + e.getMessage());
+			log("Terminando aplicação.");
+			System.exit(1);
 		}
 	}
 
-	private static void updateApplication(UpdateHelper updateHelper, Log log, FileHelper fileHelper) {
+	protected void updateCurrentJar(){
+		log("Executando updateCurrentJar()");
+		UpdateCurrentJar updateCurrentJar = new UpdateCurrentJar(updateHelper, fileHelper, log);
+		if(updateCurrentJar.hasOldUpdate()){
+			log("Existe start.jar de atualização antiga, preparando para excluí-lo.");
+			updateCurrentJar.deleteOldUpdate();
+		}
+		
+		if(updateCurrentJar.hasUpdate()){
+			log("Existe update a ser aplicado, preparando para aplica-lo.");
+			try {
+				restart(updateCurrentJar.renameUpdateJar());
+			} catch (IOException e) {
+				log("Problemas ao iniciar execução de processo. " + e.getMessage());
+				log("Terminando aplicação.");
+				System.exit(1);
+			}
+		} else if(updateCurrentJar.isRunningFromUpdate()){
+			log("Executando aplicação de atualização.");
+			try {
+				restart(updateCurrentJar.update());
+			} catch (IOException e) {
+				log("Problemas ao iniciar execução de processo. " + e.getMessage());
+				log("Terminando aplicação.");
+				System.exit(1);
+			}
+		} 
+	}
+
+	protected void application() {
+		log("Executando application()");
+		//Inicie a aplicação.
+		String mainApplication = this.parameters.get(0);
+		try {
+			Class.forName(mainApplication).getMethod("main", String[].class).invoke(null, (Object)null);
+		} catch (IllegalAccessException e) {
+			log("Problemas ao instanciar: " + mainApplication + ". " + e.getMessage());
+			e.printStackTrace();
+			System.exit(1);
+		} catch (IllegalArgumentException e) {
+			log("Problemas ao instanciar: " + mainApplication + ". " + e.getMessage());
+			e.printStackTrace();
+			System.exit(1);
+		} catch (InvocationTargetException e) {
+			log("Problemas ao instanciar: " + mainApplication + ". " + e.getMessage());
+			e.printStackTrace();
+			System.exit(1);
+		} catch (NoSuchMethodException e) {
+			log("Problemas ao instanciar: " + mainApplication + ". " + e.getMessage());
+			e.printStackTrace();
+			System.exit(1);
+		} catch (SecurityException e) {
+			log("Problemas ao instanciar: " + mainApplication + ". " + e.getMessage());
+			e.printStackTrace();
+			System.exit(1);
+		} catch (ClassNotFoundException e) {
+			log("Aplicação não encontrada. " + e.getMessage());
+			e.printStackTrace();
+			System.exit(1);
+		} finally{
+			log.endingLog(getClass());
+		}
+	}
+
+	protected void checkUpdates() {
+		log("Executando checkUpdates()");
+		removeParameter("checkUpdates");
+		try {
+			Object result = Class.forName(this.updateManager).getMethod("doUpdate", String.class).invoke(null, (Object)updateHelper.getCurrentDirectory().getAbsolutePath());
+			log("Executado: " + this.updateManager + ".doUpdate('" + updateHelper.getCurrentDirectory().getAbsolutePath() + "')");
+			if(result instanceof Boolean){
+				Boolean isUpdated = (Boolean) result; 
+				//Aplicação esta atualizada, inicie.
+				if(isUpdated){
+					startApplication();
+				} else {
+					//Aplicação não esta atualizado, reinicie utilizando apenas start.jar
+					log("Aplicação não está atualizada.");
+					this.parameters.add("applyUpdates");
+					try {
+						restart(updateHelper.getCurrentJarFile().getAbsolutePath());
+					} catch (IOException e) {
+						log("Problemas ao iniciar execução de processo. " + e.getMessage());
+						log("Terminando aplicação.");
+						System.exit(1);
+					}
+				}
+			}
+		} catch (IllegalAccessException e) {
+			log("Problemas ao instanciar: " + this.updateManager + ". " + e.getMessage());
+		} catch (IllegalArgumentException e) {
+			log("Problemas ao instanciar: " + this.updateManager + ". " + e.getMessage());			
+		} catch (InvocationTargetException e) {
+			log("Problemas ao instanciar: " + this.updateManager + ". " + e.getMessage());			
+		} catch (NoSuchMethodException e) {
+			log("Problemas ao instanciar: " + this.updateManager + ". " + e.getMessage());
+		} catch (SecurityException e) {
+			log("Problemas ao instanciar: " + this.updateManager + ". " + e.getMessage());			
+		} catch (ClassNotFoundException e) {
+			log("Biblioteca de update não encontrado. Desta forma a aplicação não buscará por atualizações. Aplicação continuará sem problemas. " + e.getMessage());
+			startApplication();
+		} 
+	}
+
+	private void startApplication() {
+		//nada a fazer reinicie com o classpath completo
+		log("Aplicação está atualizada.");
+		this.parameters.add("application");
+		try {
+			restart(updateHelper.getCurrentJarFile().getAbsolutePath() + ";" + getLibPath());
+		} catch (IOException e) {
+			log("Problemas ao iniciar execução de processo. " + e.getMessage());
+			log("Terminando aplicação.");
+			System.exit(1);
+		}
+	}
+	
+	protected void updateApplication() {
+		log("Executando updateApplication()");
 		Update update = new Update(updateHelper, fileHelper, log);
 		if(update.hasUpdateToInstall()){
 			update.update();
 		}
 	}
 
-	private static void updateCurrentJar(String[] args, UpdateHelper updateHelper, FileHelper fileHelper, Log log) throws IOException {
-		UpdateCurrentJar updateCurrentJar = new UpdateCurrentJar(updateHelper, fileHelper, log);
-		if(updateCurrentJar.hasOldUpdate()){
-			log.log(Run.class, "Existe start.jar de atualização antiga, preparando para excluí-lo.");
-			updateCurrentJar.deleteOldUpdate();
-		}
-		
-		if(updateCurrentJar.hasUpdate()){
-			log.log(Run.class, "Existe update a ser aplicado, preparando para aplica-lo.");
-			restart(args, updateCurrentJar.renameUpdateJar(), log);
-		} else if(updateCurrentJar.isRunningFromUpdate()){
-			log.log(Run.class, "Executando aplicação de atualização.");
-			restart(args, updateCurrentJar.update(), log);
-		} 
-	}
-	
-//	private static void restart(String[] args, UpdateHelper updateHelper, Log log) throws IOException{
-//		restart(args, updateHelper.getCurrentJarFile(), log);
-//	}
-
-	private static void restart(String[] args, File startJar, Log log) throws IOException {
-		String[] restartCommand = getRestartCommand(args, startJar);
-		log.log(Run.class, "Reiniciando aplicativo utilizando o comando:" + Arrays.toString(restartCommand));
-		log.log(Run.class, "-----------------------------");
-		final ProcessBuilder processBuilder = new ProcessBuilder(getRestartCommand(args, startJar));
-		processBuilder.start();
-		log.end();
-		System.exit(0);
-	}
-
-	private static void restart(String[] args, String cp, Log log, String log4jConfiguration) throws IOException {
-		String[] restartCommand = getRestartCommand(args, cp, log4jConfiguration);
-		log.log(Run.class, "Reiniciando aplicativo utilizando o comando:" + Arrays.toString(restartCommand));
-		log.log(Run.class, "-----------------------------");
-		final ProcessBuilder processBuilder = new ProcessBuilder(getRestartCommand(args, cp, log4jConfiguration));
-		processBuilder.start();
-		log.end();
-		System.exit(0);
-	}
-	
-	private static String[]  getRestartCommand(String[] args, String cp, String log4jConfiguration) {
+	private String[]  getRestartCommand(String cp) {
 		List<String> command = new ArrayList<String>();
 		command.add("\"" + System.getProperty("java.home") + File.separatorChar + "bin" + File.separatorChar + "java.exe\"");
-		command.add("-Dlog4j.configuration=" + log4jConfiguration);
+		if(log4jConfiguration != null){
+			command.add("-Dlog4j.configuration=" + log4jConfiguration);
+		}
 		command.add("-cp");
-		command.add(cp);
+		command.add("\"" + cp + "\"");
 		command.add(Run.class.getName());
-		for(String arg : args){
+		for(String arg : this.parameters){
 			command.add(arg);
 		}
 		
 		return command.toArray(new String[command.size()]);
 	}
 	
-	private static String[] getRestartCommand(String[] args, File startJar) {
-		List<String> command = new ArrayList<String>();
-		command.add("\"" + System.getProperty("java.home") + File.separatorChar + "bin" + File.separatorChar + "java.exe\"");
-		command.add("-cp");
-		command.add("\"" + startJar.getAbsolutePath() + "\"");
-		command.add(Run.class.getName());
-		for(String arg : args){
-			command.add(arg);
-		}
-		return command.toArray(new String[command.size()]);
+	protected void restart(String cp) throws IOException{
+		String[] restartCommand = getRestartCommand(cp);
+		log("Reiniciando aplicativo utilizando o comando:" + Arrays.toString(restartCommand));
+		final ProcessBuilder processBuilder = new ProcessBuilder(restartCommand);
+		processBuilder.start();
+		log.endingLog(getClass());
+		System.exit(0);
 	}
 
+	protected void restart(File startJar) throws IOException {
+		restart(startJar.getAbsolutePath() + ";");
+	}
+
+	private void removeParameter(String parameter) {
+		try {
+			this.parameters.remove(parameter);
+		} catch(Exception e) {
+			log("Problemas ao remover parametro '" + parameter + "' da lista de parametros" + e.getMessage());
+		}
+	}
+
+	protected static void showUsage() {
+		System.out.println("Use: <descrever como utilizar>");
+	}
+
+	protected String getLibPath() {
+		return this.updateHelper.getCurrentJarFile().getParentFile().getAbsolutePath() + File.separatorChar + "lib" + File.separatorChar + "*";
+	}
+
+	public void log(String message){
+		this.log.log(this.getClass(), message);
+	}
+
+	public static void main(String[] args) throws IOException{
+		if(args == null || args.length == 0){
+			showUsage();
+		}
+		Run run = new Run(args);
+		if(args.length == 1 || "applyUpdates".equals(args[args.length - 1])){
+			run.applyUpdatesAndRestart();
+		} else if("checkUpdates".equals(args[args.length - 1])){
+			run.checkUpdates();
+		} else if("application".equals(args[args.length - 1])){
+			run.application();
+		} else {
+			showUsage();
+		}
+	}
+	
 }

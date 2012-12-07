@@ -1,6 +1,5 @@
 package org.reichel.start.update;
 
-import org.reichel.start.Run;
 import org.reichel.start.filefilter.PropertiesFileFilter;
 import org.reichel.start.helper.FileHelper;
 import org.reichel.start.helper.UpdateHelper;
@@ -30,15 +29,15 @@ public class Update {
 	}
 	
 	public void update(){
-		log.log(Run.class, "-----------------------------");
-		log.log(Run.class, "Existem atualizações, preparando para aplicá-las.");
+		log.log(getClass(), "-----------------------------");
+		log.log(getClass(), "Existem atualizações, preparando para aplicá-las.");
 		this.updateJar.updateJarFiles();
-		this.fileHelper.deleteEmptyFolder(this.updateHelper.getUpdateDirectory());
 		this.backup.backup(new PropertiesFileFilter());
+		this.fileHelper.deleteEmptyFolder(this.updateHelper.getUpdateDirectory());
 		this.updateFiles.update();
 		this.fileHelper.deleteAll(this.updateHelper.getUpdateDirectory());
-		log.log(Run.class, "Fim das atualizações.");
-		log.log(Run.class, "-----------------------------");
+		log.log(getClass(), "Fim das atualizações.");
+		log.log(getClass(), "-----------------------------");
 	}
 	
 	public boolean hasUpdateToInstall(){

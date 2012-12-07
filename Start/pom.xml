@@ -34,6 +34,9 @@
 				<version>2.2</version>
 				<configuration>
 		          <archive>
+					<manifestEntries>
+		            	<Main-Class>org.reichel.start.Run</Main-Class>
+					</manifestEntries>		          
 		            <manifest>
 		              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 		              <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
